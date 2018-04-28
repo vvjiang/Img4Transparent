@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>测试代码</title>
+  <link rel="shortcut icon" sizes="16x16" href="src/images/favicon_16.ico">
+  <link rel="shortcut icon" sizes="32x32" href="src/images/favicon_32.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/2.2.0/jquery.min.js"></script>
+</head>
+
+<body>
+  <style>
+    /* 给每个样式前面都加上 #app_watermark ，以此避免与其它样式冲突的可能性*/
+
+    #app_watermark #toolbar {
+      box-sizing: border-box;
+    }
+
+    #app_watermark #canvas-container {
+      position: relative;
+    }
+
+    #app_watermark #target_canvas {
+      background-color: #fff;
+      background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+      border: 1px solid #ccc;
+    }
+
+    #app_watermark #toolbar .btn {
+      background-color: #8BC34A;
+      border: 1px solid #4CAF50;
+      border-radius: 4px;
+      color: #fff !important;
+      cursor: pointer;
+      display: inline-block;
+      font-size: 16px;
+      padding: 4px 8px;
+      text-decoration: none;
+      height: 20px;
+      line-height: 20px;
+    }
+
+    #app_watermark #toolbar .btn:hover {
+      background-color: #4CAF50;
+    }
+
+    #app_watermark #watermark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: move;
+      color: transparent;
+      font-family: cursive;
+      font-weight: bold;
+      border: 1px dashed #ccc;
+      display: none;
+      white-space: nowrap;
+    }
+
+    #app_watermark #watermark.selected {
+      color: #5BF;
+    }
+  </style>
+  <div id="app_watermark">
+    <div id="toolbar">
+      <a class="btn" id="btn_select_file" href="jacascript:void(0)">选择背景图</a>
+      <input id="target_file" type="file" style="display:none"/> 色差
+      <input type="range" id="color_diff" value="0" min="1" max="100" >
+    </div>
+    <div id="canvas-container"></div>
+  </div>
+  <script type="text/javascript">
+    // 给图片加水印相关代码
+    if ($('#app_watermark').length === 1) {
+      var watermarkInfo = {
+        width: 0,
+        height: 0
+      };
+      (function (watermarkInfo) {
+        var img = new Image();
+        var colorDiff = 20;
+        var canvasInfo = {
+          width: 0,
+          height: 0
+        }
+        var imgDataArr = []
+        var resultImgDataArr = []
+
+        /**
+         * 将canvas某块区域设置为透明
+         */
+        function setTransparent(ctx, x, y, width, height) {
+          ctx.putImageData(ctx.createImageData(width, height), x, y);
+        }
+        /**
+         * 设置canvas图像到下载链接上
+         */
+        function setCanvasImgToDownloadLink() {
+          var imgData = document.getElementById('target_canvas').toDataURL();
+          $('#download_file').attr('href', imgData);
+        };
+        /**
+         * 设置Canvas高度和宽度
+         * @param {number} width
+         * @param {number} height
+         */
+        function setCanvasSize(width, height) {
+          canvasInfo.width = width;
+          canvasInfo.height = height;
+          $('#target_canvas').attr('width', width).attr('height', height);
+          // 解决图片过大时，在canvas-container不能根据canvas的宽度自动撑宽的问题
+          $('#app_watermark').css({
+            width: width < 500 ? 500 : width,
+          });
+        };
+        /**
+         * 加载图片资源到canvas中
+         * @param {File} imgFile
+         */
+        function setImgIntoCanvas(imgFile) {
+          var reader = new FileReader();
+
+          reader.onloadend = function (e) {
+            var dataURL = e.target.result;
+            img.onload = function (event) {
+              var ctx = document.getElementById('target_canvas').getContext('2d');
+              //将canvas大小设置为和图片一样大
+              var imgWidth = event.target.naturalWidth,
+                imgHeight = event.target.naturalHeight;
+              setCanvasSize(imgWidth, imgHeight);
+              ctx.drawImage(img, 0, 0);
+
+              imgDataArr = ctx.getImageData(0, 0, imgWidth, imgHeight).data;
+              resultImgDataArr = []
+              setCanvasImgToDownloadLink();
+            };
+            img.src = dataURL;
+          };
+          reader.readAsDataURL(imgFile);
+        };
+
+        // 绑定事件
+        var bindEvent = function () {
+          // 按下选择的背景图
+          $('#btn_select_file').click(function () {
+            $('#target_file').click();
+          });
+          // 文件改变时获取文件，并文件渲染进canvas
+          $('#target_file').change(function (event) {
+            var imgFile = event.target.files[0];
+            setImgIntoCanvas(imgFile);
+          });
+          $('#color_diff').change(function (event) {
+            colorDiff = Number.parseInt(event.target.value)
+          })
+        };
+        // 此处通过这种方式将html插入，是因为博客园自动屏蔽了canvas标签和download属性
+        var initHtmlConstruct = function () {
+          $('#canvas-container').text('').append('<canvas id="target_canvas" width="100" height="100">浏览器不支持此功能，请升级</canvas>')
+          $('#toolbar').append('<a class="btn" id="download_file" href="#" download="水印图片">下载合成图片</a>');
+          $('#color_diff').val(colorDiff)
+        }
+        // 初始化canvas信息
+        var initCanvasInfo = function () {
+          var $targetCanvas = $('#target_canvas');
+          if ($targetCanvas.length === 1) {
+            var canvasPosition = $targetCanvas.offset()
+            canvasInfo.left = canvasPosition.left;
+            canvasInfo.top = canvasPosition.top;
+            canvasInfo.width = $targetCanvas.width();
+            canvasInfo.height = $targetCanvas.height();
+          }
+          $targetCanvas.off("click").click(function (e) {
+            if (resultImgDataArr.length === 0) {
+              resultImgDataArr = imgDataArr.slice(0)
+            }
+            var pos = canvasInfo.width * 4 * e.offsetY + e.offsetX * 4,
+              rValue = resultImgDataArr[pos],
+              gValue = resultImgDataArr[pos + 1],
+              bValue = resultImgDataArr[pos + 2],
+              aValue = resultImgDataArr[pos + 3];
+            var ctx = document.getElementById('target_canvas').getContext('2d');
+            for (var j = 0; j < canvasInfo.height; j++) {
+              var yPos = canvasInfo.width * 4 * j
+              for (var i = 0; i < canvasInfo.width; i++) {
+                var curPos = yPos + i * 4;
+                var value = Math.pow(resultImgDataArr[curPos] - rValue, 2) +
+                  Math.pow(resultImgDataArr[curPos + 1] - gValue, 2) +
+                  Math.pow(resultImgDataArr[curPos + 2] - bValue, 2);
+
+                if (Math.pow(value, 0.5) < colorDiff) {
+                  resultImgDataArr[curPos] = 0;
+                  resultImgDataArr[curPos + 1] = 0;
+                  resultImgDataArr[curPos + 2] = 0;
+                  resultImgDataArr[curPos + 3] = 0;
+                }
+              }
+            }
+            ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
+          })
+        }
+        $(function () {
+          if ($('#app_watermark').length === 1) {
+            initHtmlConstruct();
+            initCanvasInfo();
+            bindEvent();
+            $(window).resize(function () {
+              // 窗口大小调整后canvas位置发生改变
+              initCanvasInfo();
+            });
+          }
+        })
+      })(watermarkInfo);
+    }
+  </script>
+</body>
+
+</html>

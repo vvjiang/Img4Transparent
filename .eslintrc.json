@@ -1,0 +1,13 @@
+{
+    "parser": "babel-eslint",
+    "extends": "standard-deviation--es5",
+    "env": {
+      "browser": true
+    },
+    "rules": {
+      "arrow-body-style": [0],
+      "no-console":"warn",
+      "import/prefer-default-export": [0],
+      "no-var":[0]
+    }
+}
