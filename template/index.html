@@ -12,17 +12,17 @@
 
 <body>
   <style>
-    /* 给每个样式前面都加上 #app_watermark ，以此避免与其它样式冲突的可能性*/
+    /* 给每个样式前面都加上 #app_transparent_img ，以此避免与其它样式冲突的可能性*/
 
-    #app_watermark #toolbar {
+    #app_transparent_img #toolbar {
       box-sizing: border-box;
     }
 
-    #app_watermark #canvas-container {
+    #app_transparent_img #canvas-container {
       position: relative;
     }
 
-    #app_watermark #target_canvas {
+    #app_transparent_img #target_canvas {
       background-color: #fff;
       background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
       background-size: 20px 20px;
@@ -30,7 +30,7 @@
       border: 1px solid #ccc;
     }
 
-    #app_watermark #toolbar .btn {
+    #app_transparent_img #toolbar .btn {
       background-color: #8BC34A;
       border: 1px solid #4CAF50;
       border-radius: 4px;
@@ -44,45 +44,41 @@
       line-height: 20px;
     }
 
-    #app_watermark #toolbar .btn:hover {
+    #app_transparent_img #toolbar .btn:hover {
       background-color: #4CAF50;
     }
 
-    #app_watermark #watermark {
-      position: absolute;
-      top: 0;
-      left: 0;
-      cursor: move;
-      color: transparent;
-      font-family: cursive;
-      font-weight: bold;
-      border: 1px dashed #ccc;
-      display: none;
-      white-space: nowrap;
+    #app_transparent_img .recover-mode {
+      cursor: none;
     }
 
-    #app_watermark #watermark.selected {
-      color: #5BF;
+    #app_transparent_img #recover_canvas {
+      display: none;
+      background: red;
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      cursor: none;
     }
   </style>
-  <div id="app_watermark">
+  <div id="app_transparent_img">
     <div id="toolbar">
       <a class="btn" id="btn_select_file" href="jacascript:void(0)">选择背景图</a>
-      <input id="target_file" type="file" style="display:none"/> 色差
-      <input type="range" id="color_diff" value="0" min="1" max="100" >
+      <input id="target_file" type="file" style="display:none" />
+      <a class="btn" id="btn_recover" href="jacascript:void(0)">开启恢复模式</a>
     </div>
-    <div id="canvas-container"></div>
+    <div id="canvas-container">
+
+    </div>
   </div>
   <script type="text/javascript">
     // 给图片加水印相关代码
-    if ($('#app_watermark').length === 1) {
-      var watermarkInfo = {
-        width: 0,
-        height: 0
-      };
-      (function (watermarkInfo) {
+    if ($('#app_transparent_img').length === 1) {
+      var colorDiff = 20;
+      var recoverSize = 10;
+      (function () {
         var img = new Image();
-        var colorDiff = 20;
+        var isRecoverMode = false;
         var canvasInfo = {
           width: 0,
           height: 0
@@ -104,6 +100,68 @@
           $('#download_file').attr('href', imgData);
         };
         /**
+         * 非恢复模式下，点击canvas，以点击处颜色为标准，去掉颜色色差在指定色差范围内的颜色
+         */
+        function transparetModeCanvasClick(e) {
+          if (imgDataArr.length === 0) {
+            return;
+          }
+          if (resultImgDataArr.length === 0) {
+            resultImgDataArr = imgDataArr.slice(0)
+          }
+          var pos = canvasInfo.width * 4 * e.offsetY + e.offsetX * 4,
+            rValue = resultImgDataArr[pos],
+            gValue = resultImgDataArr[pos + 1],
+            bValue = resultImgDataArr[pos + 2],
+            aValue = resultImgDataArr[pos + 3];
+          var ctx = document.getElementById('target_canvas').getContext('2d');
+          for (var j = 0; j < canvasInfo.height; j++) {
+            var yPos = canvasInfo.width * 4 * j
+            for (var i = 0; i < canvasInfo.width; i++) {
+              var curPos = yPos + i * 4;
+              var value = Math.pow(resultImgDataArr[curPos] - rValue, 2) +
+                Math.pow(resultImgDataArr[curPos + 1] - gValue, 2) +
+                Math.pow(resultImgDataArr[curPos + 2] - bValue, 2);
+
+              if (Math.pow(value, 0.5) < colorDiff) {
+                resultImgDataArr[curPos] = 0;
+                resultImgDataArr[curPos + 1] = 0;
+                resultImgDataArr[curPos + 2] = 0;
+                resultImgDataArr[curPos + 3] = 0;
+              }
+            }
+          }
+          ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
+        }
+        /**
+         * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
+         */
+        function recoverModeCanvasClick(e) {
+          cursor: none;
+        }
+        /**
+         * 恢复模式下，鼠标在canvas上移动，呈现原先图像
+         */
+        function recoverModeCanvasMove(e) {
+          if(imgDataArr.length===0){
+            return;
+          }
+          $("#recover_canvas").css({
+            transform: 'translate(' + e.offsetX + 'px,' + e.offsetY + 'px)'
+          })
+          var recoverImgArr = []
+
+          for (var i = 0, ylen = recoverSize; i < ylen; i++) {
+            var pos = canvasInfo.width * 4 * (e.offsetY + i) + e.offsetX * 4;
+            for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
+              recoverImgArr.push(imgDataArr[j]);
+            }
+          }
+          var ctx = document.getElementById('recover_canvas').getContext('2d');
+          ctx.putImageData(new ImageData(new Uint8ClampedArray(recoverImgArr), recoverSize, recoverSize), 0, 0);
+        }
+
+        /**
          * 设置Canvas高度和宽度
          * @param {number} width
          * @param {number} height
@@ -113,7 +171,7 @@
           canvasInfo.height = height;
           $('#target_canvas').attr('width', width).attr('height', height);
           // 解决图片过大时，在canvas-container不能根据canvas的宽度自动撑宽的问题
-          $('#app_watermark').css({
+          $('#app_transparent_img').css({
             width: width < 500 ? 500 : width,
           });
         };
@@ -154,15 +212,34 @@
             var imgFile = event.target.files[0];
             setImgIntoCanvas(imgFile);
           });
-          $('#color_diff').change(function (event) {
-            colorDiff = Number.parseInt(event.target.value)
+          // 开启恢复模式
+          $('#btn_recover').click(function () {
+            var $targetCanvas = $('#target_canvas');
+            $targetCanvas.off("click").off("mousemove").removeClass('recover-mode');
+
+            isRecoverMode = !isRecoverMode
+            if (isRecoverMode) {
+              $("#recover_canvas").attr({
+                width: recoverSize,
+                height: recoverSize
+              }).show();
+              $targetCanvas.addClass('recover-mode').mousemove(recoverModeCanvasMove).click(recoverModeCanvasClick);
+            } else {
+              $targetCanvas.click(transparetModeCanvasClick);
+              $("#recover_canvas").hide();
+            }
           })
         };
+
+
         // 此处通过这种方式将html插入，是因为博客园自动屏蔽了canvas标签和download属性
         var initHtmlConstruct = function () {
-          $('#canvas-container').text('').append('<canvas id="target_canvas" width="100" height="100">浏览器不支持此功能，请升级</canvas>')
+          var $container = $('#canvas-container');
+          // 加入处理图片的canvas
+          $container.text('').append('<canvas id="target_canvas" width="100" height="100">浏览器不支持此功能，请升级</canvas>')
+          // 处理recover模式下的跟随鼠标的canvas
+          $container.append('<canvas id="recover_canvas" width="10" height="10">浏览器不支持此功能，请升级</canvas>')
           $('#toolbar').append('<a class="btn" id="download_file" href="#" download="水印图片">下载合成图片</a>');
-          $('#color_diff').val(colorDiff)
         }
         // 初始化canvas信息
         var initCanvasInfo = function () {
@@ -174,37 +251,11 @@
             canvasInfo.width = $targetCanvas.width();
             canvasInfo.height = $targetCanvas.height();
           }
-          $targetCanvas.off("click").click(function (e) {
-            if (resultImgDataArr.length === 0) {
-              resultImgDataArr = imgDataArr.slice(0)
-            }
-            var pos = canvasInfo.width * 4 * e.offsetY + e.offsetX * 4,
-              rValue = resultImgDataArr[pos],
-              gValue = resultImgDataArr[pos + 1],
-              bValue = resultImgDataArr[pos + 2],
-              aValue = resultImgDataArr[pos + 3];
-            var ctx = document.getElementById('target_canvas').getContext('2d');
-            for (var j = 0; j < canvasInfo.height; j++) {
-              var yPos = canvasInfo.width * 4 * j
-              for (var i = 0; i < canvasInfo.width; i++) {
-                var curPos = yPos + i * 4;
-                var value = Math.pow(resultImgDataArr[curPos] - rValue, 2) +
-                  Math.pow(resultImgDataArr[curPos + 1] - gValue, 2) +
-                  Math.pow(resultImgDataArr[curPos + 2] - bValue, 2);
-
-                if (Math.pow(value, 0.5) < colorDiff) {
-                  resultImgDataArr[curPos] = 0;
-                  resultImgDataArr[curPos + 1] = 0;
-                  resultImgDataArr[curPos + 2] = 0;
-                  resultImgDataArr[curPos + 3] = 0;
-                }
-              }
-            }
-            ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
-          })
+          //点击canvas，以点击处颜色为标准，去掉颜色色差在指定色差范围内的颜色
+          $targetCanvas.off("click").click(transparetModeCanvasClick)
         }
         $(function () {
-          if ($('#app_watermark').length === 1) {
+          if ($('#app_transparent_img').length === 1) {
             initHtmlConstruct();
             initCanvasInfo();
             bindEvent();
@@ -214,7 +265,7 @@
             });
           }
         })
-      })(watermarkInfo);
+      })();
     }
   </script>
 </body>
