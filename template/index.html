@@ -52,13 +52,12 @@
       cursor: none;
     }
 
-    #app_transparent_img #recover_canvas {
+    #app_transparent_img #recover_img {
       display: none;
       position: absolute;
       /* 这里要加1px是因为我们的target_canvas有个1px的边框 */
       top: 1px;
       left: 1px;
-      cursor: none;
       border: 1px solid #f00;
     }
   </style>
@@ -75,8 +74,17 @@
   <script type="text/javascript">
     // 图片背景透明化相关代码
     if ($('#app_transparent_img').length === 1) {
-      var colorDiff = 20;
-      var recoverSize = 10;
+      var recoverSize = 20;
+      var transparentConfig = {
+        colorDiff: 20,
+        setRecoverSize: function (value) {
+          recoverSize = value;
+          $('#recover_img').css({
+            width: value,
+            height: value
+          })
+        }
+      };
       (function () {
         var img = new Image();
         var isRecoverMode = false;
@@ -124,7 +132,7 @@
                 Math.pow(resultImgDataArr[curPos + 1] - gValue, 2) +
                 Math.pow(resultImgDataArr[curPos + 2] - bValue, 2);
 
-              if (Math.pow(value, 0.5) < colorDiff) {
+              if (Math.pow(value, 0.5) < transparentConfig.colorDiff) {
                 resultImgDataArr[curPos] = 0;
                 resultImgDataArr[curPos + 1] = 0;
                 resultImgDataArr[curPos + 2] = 0;
@@ -133,10 +141,11 @@
             }
           }
           ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
+          setCanvasImgToDownloadLink();
         }
-        // 根据鼠标的偏移位置获取recover_canvas位置
+        // 根据鼠标的偏移位置获取recover_img位置
         function getRecoverCanvasPos(e) {
-          // 给鼠标位置+1，是为了让recover_canvas不会出现在鼠标下方，从而使得鼠标点击时不会点击在recover_canvas上
+          // 给鼠标位置+1，是为了让recover_img不会出现在鼠标下方，从而使得鼠标点击时不会点击在recover_img上
           return {
             x: e.offsetX + 1,
             y: e.offsetY + 1
@@ -151,38 +160,29 @@
           if (imgDataArr.length === 0) {
             return;
           }
+          var $recoverImg = $("#recover_img");
           var recoverCanvasPos = getRecoverCanvasPos(e)
-          $("#recover_canvas").css({
-            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)'
-          })
-          clearTimeout(timerHandler)
-          timerHandler = setTimeout(function () {
+          if (recoverCanvasPos.x > canvasInfo.width - recoverSize || recoverCanvasPos.y > canvasInfo.height - recoverSize) {
+            $recoverImg.hide();
+            return;
+          } else {
+            $recoverImg.show();
+          }
+          $recoverImg.css({
+            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)',
+            'background-position': (-recoverCanvasPos.x - 1) + 'px ' + (-recoverCanvasPos.y - 1) + 'px'
+          });
 
-            var recoverImgArr = []
-
-            for (var i = 0, ylen = recoverSize; i < ylen; i++) {
-              var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
-              for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
-                recoverImgArr.push(imgDataArr[j]);
-              }
-            }
-            var ctx = document.getElementById('recover_canvas').getContext('2d');
-            ctx.putImageData(new ImageData(new Uint8ClampedArray(recoverImgArr), recoverSize, recoverSize), 0, 0);
-          }, 100)
         }
 
         /**
          * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
          */
         function recoverModeCanvasClick(e) {
-          console.info(123)
           if (imgDataArr.length === 0) {
             return;
           }
-          var recoverCanvasPos = getRecoverCanvasPos(e)
-          $("#recover_canvas").css({
-            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)'
-          })
+          var recoverCanvasPos = getRecoverCanvasPos(e);
           for (var i = 0, ylen = recoverSize; i < ylen; i++) {
             var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
             for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
@@ -191,6 +191,7 @@
           }
           var ctx = document.getElementById('target_canvas').getContext('2d');
           ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
+          setCanvasImgToDownloadLink()
         }
 
         /**
@@ -229,6 +230,7 @@
               setCanvasImgToDownloadLink();
             };
             img.src = dataURL;
+            $('#recover_img').css("background-image", "url(" + dataURL + ")");
           };
           reader.readAsDataURL(imgFile);
         };
@@ -251,15 +253,17 @@
 
             isRecoverMode = !isRecoverMode
             if (isRecoverMode) {
-              $("#recover_canvas").attr({
+              $("#recover_img").css({
                 width: recoverSize,
                 height: recoverSize
               }).show();
-              $targetCanvas.addClass('recover-mode').mousemove(recoverModeCanvasMove).click(recoverModeCanvasClick);
+              $targetCanvas.addClass('recover-mode').click(recoverModeCanvasClick).mousemove(recoverModeCanvasMove).mouseleave(function(){
+                $("#recover_img").hide();
+              });
               $('#btn_recover').text('关闭恢复模式')
             } else {
               $targetCanvas.click(transparetModeCanvasClick);
-              $("#recover_canvas").hide();
+              $("#recover_img").hide();
               $('#btn_recover').text('开启恢复模式')
             }
           })
@@ -271,8 +275,8 @@
           var $container = $('#canvas-container');
           // 加入处理图片的canvas
           $container.text('').append('<canvas id="target_canvas" width="100" height="100">浏览器不支持此功能，请升级</canvas>')
-          // 处理recover模式下的跟随鼠标的canvas
-          $container.append('<canvas id="recover_canvas" width="10" height="10">浏览器不支持此功能，请升级</canvas>')
+          // 处理recover模式下的跟随鼠标的图像
+          $container.append('<div id="recover_img"></div>')
           $('#toolbar').append('<a class="btn" id="download_file" href="#" download="水印图片">下载合成图片</a>');
         }
         // 初始化canvas信息
