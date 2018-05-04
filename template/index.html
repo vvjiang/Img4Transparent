@@ -143,6 +143,7 @@
           }
         }
 
+        var timerHandler = 0
         /**
          * 恢复模式下，鼠标在canvas上移动，呈现原先图像
          */
@@ -154,22 +155,26 @@
           $("#recover_canvas").css({
             transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)'
           })
-          var recoverImgArr = []
+          clearTimeout(timerHandler)
+          timerHandler = setTimeout(function () {
 
-          for (var i = 0, ylen = recoverSize; i < ylen; i++) {
-            var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
-            for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
-              recoverImgArr.push(imgDataArr[j]);
+            var recoverImgArr = []
+
+            for (var i = 0, ylen = recoverSize; i < ylen; i++) {
+              var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
+              for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
+                recoverImgArr.push(imgDataArr[j]);
+              }
             }
-          }
-          var ctx = document.getElementById('recover_canvas').getContext('2d');
-          ctx.putImageData(new ImageData(new Uint8ClampedArray(recoverImgArr), recoverSize, recoverSize), 0, 0);
+            var ctx = document.getElementById('recover_canvas').getContext('2d');
+            ctx.putImageData(new ImageData(new Uint8ClampedArray(recoverImgArr), recoverSize, recoverSize), 0, 0);
+          }, 100)
         }
 
         /**
          * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
          */
-         function recoverModeCanvasClick(e) {
+        function recoverModeCanvasClick(e) {
           console.info(123)
           if (imgDataArr.length === 0) {
             return;
