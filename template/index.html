@@ -111,6 +111,37 @@
           $('#download_file').attr('href', imgData);
         };
         /**
+         * 获取图像数据中指定偏移处的颜色信息
+         */
+        function getColorInfo(imgDataArr, offsetX, offsetY) {
+          var pos = canvasInfo.width * 4 * offsetY + offsetX * 4;
+          return {
+            rValue: imgDataArr[pos],
+            gValue: imgDataArr[pos + 1],
+            bValue: imgDataArr[pos + 2],
+            aValue: imgDataArr[pos + 3]
+          }
+        }
+        /**
+         * 获取图像数据指定位置颜色与指定颜色的色差
+         */
+        function getColorDiff(imgDataArr, pos, colorInfo) {
+          var value = Math.pow(imgDataArr[pos] - colorInfo.rValue, 2) +
+            Math.pow(imgDataArr[pos + 1] - colorInfo.gValue, 2) +
+            Math.pow(imgDataArr[pos + 2] - colorInfo.bValue, 2);
+
+          return Math.pow(value, 0.5);
+        }
+        /**
+         * 设置图像数据指定位置为透明色
+         */
+        function setTransparent(imgDataArr, pos) {
+          imgDataArr[pos] = 0;
+          imgDataArr[pos + 1] = 0;
+          imgDataArr[pos + 2] = 0;
+          imgDataArr[pos + 3] = 0;
+        }
+        /**
          * 非恢复模式下，点击canvas，以点击处颜色为标准，去掉颜色色差在指定色差范围内的颜色
          */
         function transparetModeCanvasClick(e) {
@@ -120,26 +151,11 @@
           if (resultImgDataArr.length === 0) {
             resultImgDataArr = imgDataArr.slice(0)
           }
-          var pos = canvasInfo.width * 4 * e.offsetY + e.offsetX * 4,
-            rValue = resultImgDataArr[pos],
-            gValue = resultImgDataArr[pos + 1],
-            bValue = resultImgDataArr[pos + 2],
-            aValue = resultImgDataArr[pos + 3];
+          var clickColorInfo = getColorInfo(resultImgDataArr, e.offsetX, e.offsetY)
           var ctx = document.getElementById('target_canvas').getContext('2d');
-          for (var j = 0; j < canvasInfo.height; j++) {
-            var yPos = canvasInfo.width * 4 * j
-            for (var i = 0; i < canvasInfo.width; i++) {
-              var curPos = yPos + i * 4;
-              var value = Math.pow(resultImgDataArr[curPos] - rValue, 2) +
-                Math.pow(resultImgDataArr[curPos + 1] - gValue, 2) +
-                Math.pow(resultImgDataArr[curPos + 2] - bValue, 2);
-
-              if (Math.pow(value, 0.5) < transparentConfig.colorDiff) {
-                resultImgDataArr[curPos] = 0;
-                resultImgDataArr[curPos + 1] = 0;
-                resultImgDataArr[curPos + 2] = 0;
-                resultImgDataArr[curPos + 3] = 0;
-              }
+          for (var pos = 0, len = canvasInfo.height * canvasInfo.height * 4; pos < len; pos = pos + 4) {
+            if (getColorDiff(resultImgDataArr, pos, clickColorInfo) < transparentConfig.colorDiff) {
+              setTransparent(resultImgDataArr, pos);
             }
           }
           ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
@@ -259,7 +275,7 @@
                 width: recoverSize,
                 height: recoverSize
               });
-              $targetCanvas.addClass('recover-mode').click(recoverModeCanvasClick).mousemove(recoverModeCanvasMove).mouseleave(function(){
+              $targetCanvas.addClass('recover-mode').click(recoverModeCanvasClick).mousemove(recoverModeCanvasMove).mouseleave(function () {
                 $("#recover_img").hide();
               });
               $('#btn_recover').text('关闭恢复模式')
@@ -279,15 +295,13 @@
           $container.text('').append('<canvas id="target_canvas" width="100" height="100">浏览器不支持此功能，请升级</canvas>')
           // 处理recover模式下的跟随鼠标的图像
           $container.append('<div id="recover_img"></div>')
-          $('#toolbar').append('<a class="btn" id="download_file" href="#" download="水印图片">下载合成图片</a>');
+          $('#toolbar').append('<a class="btn" id="download_file" href="#" download="透明化图片">下载合成图片</a>');
         }
         // 初始化canvas信息
         var initCanvasInfo = function () {
           var $targetCanvas = $('#target_canvas');
           if ($targetCanvas.length === 1) {
             var canvasPosition = $targetCanvas.offset()
-            canvasInfo.left = canvasPosition.left;
-            canvasInfo.top = canvasPosition.top;
             canvasInfo.width = $targetCanvas.width();
             canvasInfo.height = $targetCanvas.height();
           }
