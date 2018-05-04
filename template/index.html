@@ -53,6 +53,8 @@
     }
 
     #app_transparent_img #recover_img {
+      /* 图片的鼠标样式隐藏，防止拖动太快出现鼠标闪烁现象 */
+      cursor: none;
       display: none;
       position: absolute;
       /* 这里要加1px是因为我们的target_canvas有个1px的边框 */
@@ -233,7 +235,7 @@
             $('#recover_img').css("background-image", "url(" + dataURL + ")");
           };
           reader.readAsDataURL(imgFile);
-        };
+        }
 
         // 绑定事件
         var bindEvent = function () {
@@ -256,7 +258,7 @@
               $("#recover_img").css({
                 width: recoverSize,
                 height: recoverSize
-              }).show();
+              });
               $targetCanvas.addClass('recover-mode').click(recoverModeCanvasClick).mousemove(recoverModeCanvasMove).mouseleave(function(){
                 $("#recover_img").hide();
               });
