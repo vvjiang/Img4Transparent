@@ -54,11 +54,12 @@
 
     #app_transparent_img #recover_canvas {
       display: none;
-      background: red;
       position: absolute;
+      /* 这里要加1px是因为我们的target_canvas有个1px的边框 */
       top: 1px;
       left: 1px;
       cursor: none;
+      border: 1px solid #f00;
     }
   </style>
   <div id="app_transparent_img">
@@ -72,7 +73,7 @@
     </div>
   </div>
   <script type="text/javascript">
-    // 给图片加水印相关代码
+    // 图片背景透明化相关代码
     if ($('#app_transparent_img').length === 1) {
       var colorDiff = 20;
       var recoverSize = 10;
@@ -133,32 +134,58 @@
           }
           ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
         }
-        /**
-         * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
-         */
-        function recoverModeCanvasClick(e) {
-          cursor: none;
+        // 根据鼠标的偏移位置获取recover_canvas位置
+        function getRecoverCanvasPos(e) {
+          // 给鼠标位置+1，是为了让recover_canvas不会出现在鼠标下方，从而使得鼠标点击时不会点击在recover_canvas上
+          return {
+            x: e.offsetX + 1,
+            y: e.offsetY + 1
+          }
         }
+
         /**
          * 恢复模式下，鼠标在canvas上移动，呈现原先图像
          */
         function recoverModeCanvasMove(e) {
-          if(imgDataArr.length===0){
+          if (imgDataArr.length === 0) {
             return;
           }
+          var recoverCanvasPos = getRecoverCanvasPos(e)
           $("#recover_canvas").css({
-            transform: 'translate(' + e.offsetX + 'px,' + e.offsetY + 'px)'
+            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)'
           })
           var recoverImgArr = []
 
           for (var i = 0, ylen = recoverSize; i < ylen; i++) {
-            var pos = canvasInfo.width * 4 * (e.offsetY + i) + e.offsetX * 4;
+            var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
             for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
               recoverImgArr.push(imgDataArr[j]);
             }
           }
           var ctx = document.getElementById('recover_canvas').getContext('2d');
           ctx.putImageData(new ImageData(new Uint8ClampedArray(recoverImgArr), recoverSize, recoverSize), 0, 0);
+        }
+
+        /**
+         * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
+         */
+         function recoverModeCanvasClick(e) {
+          console.info(123)
+          if (imgDataArr.length === 0) {
+            return;
+          }
+          var recoverCanvasPos = getRecoverCanvasPos(e)
+          $("#recover_canvas").css({
+            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)'
+          })
+          for (var i = 0, ylen = recoverSize; i < ylen; i++) {
+            var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
+            for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
+              resultImgDataArr[j] = imgDataArr[j]
+            }
+          }
+          var ctx = document.getElementById('target_canvas').getContext('2d');
+          ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
         }
 
         /**
@@ -224,9 +251,11 @@
                 height: recoverSize
               }).show();
               $targetCanvas.addClass('recover-mode').mousemove(recoverModeCanvasMove).click(recoverModeCanvasClick);
+              $('#btn_recover').text('关闭恢复模式')
             } else {
               $targetCanvas.click(transparetModeCanvasClick);
               $("#recover_canvas").hide();
+              $('#btn_recover').text('开启恢复模式')
             }
           })
         };
