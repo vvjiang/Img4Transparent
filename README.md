@@ -1,4 +1,4 @@
-# ImgModifier #
+# Img4Transparent #
 
 对图片进行背景透明化的处理
 
