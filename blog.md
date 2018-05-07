@@ -226,4 +226,101 @@ imgDataArr里面保存的是原始的图像像素信息，之后还会用到，�
 
 ** 现在的方案（隐藏鼠标 + background-image） **
 
-现在的方案是在鼠标移动时，隐藏鼠标，并在鼠标那里加一个div，div里面设置原始图像的背景图片。在移动鼠标时，会对
+现在的方案是在鼠标移动时，隐藏鼠标，并在鼠标那里加一个div，div里面设置原始图像的背景图片。
+
+在移动鼠标时，不仅会对鼠标的位置进行重新计算（说是位置，实际上用的是translate，而不是top+left），还会对背景图片的位置进行重新计算，这样就可以实现同样的效果了。
+
+通过这种方案，在我的电脑上移动红框和计算恢复图像的方式很流畅，完全感觉不到卡顿。
+
+如果在低配电脑上有卡顿的情况，这里也可以加一个防抖函数来处理。
+
+## 恢复模式的实现 ##
+
+那么让我们现在来看一看恢复模式下鼠标在canvas上移动时的代码：
+
+    // 根据鼠标的偏移位置获取recover_img位置
+    function getRecoverImgPos(e) {
+      // 给鼠标位置+1，是为了让recover_img不会出现在鼠标下方，从而使得鼠标点击时不会点击在recover_img上
+      return {
+        x: e.offsetX + 1,
+        y: e.offsetY + 1
+      }
+    }
+
+    /**
+     * 恢复模式下，鼠标在canvas上移动，呈现原先图像
+     */
+    function recoverModeCanvasMove(e) {
+      if (imgDataArr.length === 0) {
+        return;
+      }
+      var $recoverImg = $("#recover_img");
+      var recoverImgPos = getRecoverImgPos(e)
+      if (recoverImgPos.x > canvasInfo.width - recoverSize || recoverImgPos.y > canvasInfo.height - recoverSize) {
+      $recoverImg.hide();
+        return;
+      } else {
+        $recoverImg.show();
+      }
+      $recoverImg.css({
+        transform: 'translate(' + recoverImgPos.x + 'px,' + recoverImgPos.y + 'px)',
+        'background-position': (-recoverImgPos.x - 1) + 'px ' + (-recoverImgPos.y - 1) + 'px'
+      });
+    }
+
+在上面的代码中我们会根据鼠标的位置重新计算恢复图像所在的div的位置，然后判断是否触边来决定是否隐藏。
+接着再来计算其位置。
+
+这里有一个坑点在注释里面也写了，就是恢复图像实际上并没有和鼠标重叠，以防止我们在点击时点到恢复图像上而不是canvas上。
+
+另外如果大家细心查看css样式的话，会发现两个小坑点：
+
+    1、在样式里面对恢复图像和canvas上的鼠标样式都设置了隐藏，原因是避免当鼠标拖动过快时鼠标会出现在恢复图像上，出现鼠标闪烁情况
+    2、恢复图像本身就有一个top：1px和left：1px的初始值，这是因为我们的canvas有一个1px的border，而绝对定位的位置是相对于canvas的父级的。
+
+然后再来看看点击恢复图像的代码：
+
+    /**
+     * 恢复模式下，点击canvas，将点击处指定范围内图像恢复原样
+     */
+    function recoverModeCanvasClick(e) {
+      if (imgDataArr.length === 0) {
+        return;
+      }
+      var recoverImgPos = getRecoverImgPos(e);
+      for (var i = 0, ylen = recoverSize; i < ylen; i++) {
+        var pos = canvasInfo.width * 4 * (recoverImgPos.y + i) + recoverImgPos.x * 4;
+        for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
+          resultImgDataArr[j] = imgDataArr[j]
+        }
+      }
+      var ctx = document.getElementById('target_canvas').getContext('2d');
+      ctx.putImageData(new ImageData(resultImgDataArr, canvasInfo.width, canvasInfo.height), 0, 0);
+      setCanvasImgToDownloadLink()
+    }
+
+同样是先根据鼠标位置获取恢复图像的位置，然后根据偏移量去计算位置。
+
+我们得注意到虽然我们的恢复图像是一块完整的相连接的区域，但是在
+Uint8ClampedArray数组中的数据并不是相连接的，需要我们去计算。
+
+将最开始我们保存初始图像像素数组imgDataArr赋值到当前处理的图像像素数组中。
+
+最后将处理好的像素数组以putImageData的方式放入数组即可。
+
+## 总结 ##
+
+这个小应用现在可以满足我的需求了，但是它依然存在很多不足与改进空间，比如：
+
+    1、兼容性
+    2、色差的调整，现在是放在控制台之中。即使是拿出来也可能只是一个输入框。实际上这个地方是可以做的更加完美，在应对一个复杂图片时，当我们点击一个像素后，可以保存这个像素，并出现一个调整色差的滑动条，拖动这个滑动条图像会针对色差在原基础上实时进行透明化和恢复图像的处理。
+    3、恢复图像尺寸的调整，可以通过鼠标滑轮滚动的方式进行处理
+    4、如果一个应用不能让我第一眼就知道怎么做，怎么玩，那么这个应用已经是有问题的。很明显虽然这比其他应用已经足够简单，但依然不够是吗？
+
+本期分享结束，依然是一个小应用，依然是一堆你可能知道也可能不知道的小知识点。
+
+最后例行说明，右下角的精灵球是点赞，这已经是我连续几篇文章说明了，并且那么大几个字已经写明了。
+因为有几个园友引用了这个精灵球，所以你们应该也形成了精灵球即是点赞的心理预期和用户习惯了吧。
+如果你不小心点错了，请刷新页面，那么精灵球那里会出现取消点赞的按钮。
+
+讲道理，在精灵球那里加那么几个大字已经很蠢了，每次在文章里还要再说一堆就更蠢了，所以下篇文章就不会再写这些话了，因为我已经感觉蠢到极限了并且不想再解释了。

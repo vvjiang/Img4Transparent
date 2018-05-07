@@ -162,7 +162,7 @@
           setCanvasImgToDownloadLink();
         }
         // 根据鼠标的偏移位置获取recover_img位置
-        function getRecoverCanvasPos(e) {
+        function getRecoverImgPos(e) {
           // 给鼠标位置+1，是为了让recover_img不会出现在鼠标下方，从而使得鼠标点击时不会点击在recover_img上
           return {
             x: e.offsetX + 1,
@@ -179,16 +179,16 @@
             return;
           }
           var $recoverImg = $("#recover_img");
-          var recoverCanvasPos = getRecoverCanvasPos(e)
-          if (recoverCanvasPos.x > canvasInfo.width - recoverSize || recoverCanvasPos.y > canvasInfo.height - recoverSize) {
+          var recoverImgPos = getRecoverImgPos(e)
+          if (recoverImgPos.x > canvasInfo.width - recoverSize || recoverImgPos.y > canvasInfo.height - recoverSize) {
             $recoverImg.hide();
             return;
           } else {
             $recoverImg.show();
           }
           $recoverImg.css({
-            transform: 'translate(' + recoverCanvasPos.x + 'px,' + recoverCanvasPos.y + 'px)',
-            'background-position': (-recoverCanvasPos.x - 1) + 'px ' + (-recoverCanvasPos.y - 1) + 'px'
+            transform: 'translate(' + recoverImgPos.x + 'px,' + recoverImgPos.y + 'px)',
+            'background-position': (-recoverImgPos.x - 1) + 'px ' + (-recoverImgPos.y - 1) + 'px'
           });
 
         }
@@ -200,9 +200,9 @@
           if (imgDataArr.length === 0) {
             return;
           }
-          var recoverCanvasPos = getRecoverCanvasPos(e);
+          var recoverImgPos = getRecoverImgPos(e);
           for (var i = 0, ylen = recoverSize; i < ylen; i++) {
-            var pos = canvasInfo.width * 4 * (recoverCanvasPos.y + i) + recoverCanvasPos.x * 4;
+            var pos = canvasInfo.width * 4 * (recoverImgPos.y + i) + recoverImgPos.x * 4;
             for (var j = pos, xlen = pos + recoverSize * 4; j < xlen; j++) {
               resultImgDataArr[j] = imgDataArr[j]
             }
