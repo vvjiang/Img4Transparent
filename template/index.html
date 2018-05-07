@@ -152,8 +152,14 @@
             resultImgDataArr = imgDataArr.slice(0)
           }
           var clickColorInfo = getColorInfo(resultImgDataArr, e.offsetX, e.offsetY)
+
+          // 如果是透明颜色则不做处理
+          if (clickColorInfo.aValue === 0) {
+            return;
+          }
+
           var ctx = document.getElementById('target_canvas').getContext('2d');
-          for (var pos = 0, len = canvasInfo.height * canvasInfo.height * 4; pos < len; pos = pos + 4) {
+          for (var pos = canvasInfo.width * canvasInfo.height * 4 - 4; pos >= 0; pos = pos - 4) {
             if (getColorDiff(resultImgDataArr, pos, clickColorInfo) < transparentConfig.colorDiff) {
               setTransparent(resultImgDataArr, pos);
             }
@@ -244,7 +250,7 @@
               ctx.drawImage(img, 0, 0);
 
               imgDataArr = ctx.getImageData(0, 0, imgWidth, imgHeight).data;
-              resultImgDataArr = []
+              resultImgDataArr = imgDataArr.slice(0)
               setCanvasImgToDownloadLink();
             };
             img.src = dataURL;
