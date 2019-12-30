@@ -1,6 +1,6 @@
 # Img4Transparent #
 
-已废弃，新的仓库地址为：https://gitee.com/wmvc/Img4Transparent
+已废弃，新的仓库地址为：https://gitee.com/vvjiang/Img4Transparent
 
 原文：
 
