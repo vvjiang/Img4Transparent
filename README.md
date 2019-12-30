@@ -1,5 +1,9 @@
 # Img4Transparent #
 
+已废弃，新的仓库地址为：https://gitee.com/wmvc/Img4Transparent
+
+原文：
+
 纯前端实现图片背景透明化
 
 ## 使用 ##
